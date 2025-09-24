@@ -1,0 +1,34 @@
+package com.montecristoai.orquestra
+
+import com.montecristoai.orquestra.routes.webRouting
+import com.montecristoai.orquestra.di.appModule
+import com.montecristoai.orquestra.routes.analysisRoute
+import com.montecristoai.orquestra.routes.transcriptionRoute
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.*
+import io.ktor.server.netty.*
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import kotlinx.serialization.json.Json
+import org.koin.ktor.plugin.Koin
+
+fun main(args: Array<String>) {
+    EngineMain.main(args)
+}
+
+fun Application.module() {
+    val whisperKey = environment.config.property("openai.whisperKey").getString()
+
+    install(Koin) {
+        // Le pasamos la clave a nuestro módulo de Koin.
+        modules(appModule(whisperKey))
+    }
+    install(ContentNegotiation) {
+        json(Json {
+            ignoreUnknownKeys = true
+        })
+    }
+
+    webRouting()
+    transcriptionRoute()
+    analysisRoute()
+}

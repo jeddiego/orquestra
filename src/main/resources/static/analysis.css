@@ -1,0 +1,155 @@
+/* --- Estilos para el Modal de Análisis --- */
+.analysis-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.analysis-modal-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.analysis-modal-panel {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.analysis-modal-backdrop.visible .analysis-modal-panel {
+    transform: scale(1);
+}
+
+.analysis-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.analysis-modal-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+#close-analysis-modal {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+.analysis-modal-content {
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Estilos para la Ficha Descriptiva y Transcripción (reutilizados de tu maqueta) */
+.descriptive-card, .transcription-card {
+    background-color: #1E1E1E; /* Un poco más oscuro para contraste */
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #FFD700; /* Color oro para destacar */
+}
+
+.copy-button {
+    background: var(--bg-tertiary);
+    border: 1px solid #444;
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 0.5rem;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 6px;
+}
+
+.info-item h4 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.info-item p {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.summary h4, .key-points h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.summary p, .key-points ul {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 6px;
+    color: var(--text-secondary);
+}
+
+.key-points ul {
+    list-style-position: inside;
+}
+
+.transcription-content {
+    background-color: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 6px;
+    max-height: 300px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}

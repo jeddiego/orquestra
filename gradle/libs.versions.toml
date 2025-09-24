@@ -1,0 +1,51 @@
+[versions]
+kotlin = "2.1.10"
+kotlinx-html = "0.12.0"
+logback = "1.4.14"
+shadow = "8.1.1"
+exposedVersion = "0.61.0"
+mysqlVersion = "9.3.0"
+ktor = "2.3.13"
+koinVersion = "4.0.3"
+cloudinaryVersion = "1.38.0"
+dotenvVersion = "6.4.1"
+googleAi = "0.5.0"
+
+[libraries]
+ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-sessions = { module = "io.ktor:ktor-server-sessions", version.ref = "ktor" }
+ktor-server-host-common = { module = "io.ktor:ktor-server-host-common", version.ref = "ktor" }
+ktor-server-html-builder = { module = "io.ktor:ktor-server-html-builder", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+kotlinx-html = { module = "org.jetbrains.kotlinx:kotlinx-html", version.ref = "kotlinx-html" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+# Google
+google-ai-client = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "googleAi"}
+# Exposed
+exposed-core = { group = "org.jetbrains.exposed", name = "exposed-core", version.ref = "exposedVersion" }
+exposed-dao = { group = "org.jetbrains.exposed", name = "exposed-dao", version.ref = "exposedVersion" }
+exposed-jdbc = { group = "org.jetbrains.exposed", name = "exposed-jdbc", version.ref = "exposedVersion" }
+exposed-java-time = { group = "org.jetbrains.exposed", name = "exposed-java-time", version.ref = "exposedVersion" }
+# MySql
+mysql = { group = "com.mysql", name = "mysql-connector-j", version.ref = "mysqlVersion"}
+# Koin
+koin-bom = { group = "io.insert-koin", name = "koin-bom", version.ref = "koinVersion" }
+koin-core = { group = "io.insert-koin", name = "koin-core", version.ref = "koinVersion" }
+koin-ktor = { group = "io.insert-koin", name = "koin-ktor", version.ref = "koinVersion" }
+# Cloudinary
+cloudinary = { group = "com.cloudinary", name = "cloudinary-http45", version.ref = "cloudinaryVersion" }
+# EnvConfig
+dotenv-kotlin = { group = "io.github.cdimascio", name = "dotenv-kotlin", version.ref = "dotenvVersion"}
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "1.9.10" }
