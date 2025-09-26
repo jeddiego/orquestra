@@ -38,7 +38,7 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
 
     // Google
-//    implementation(libs.google.ai.client)
+    implementation(libs.google.ai.client)
 
     // Testing
     testImplementation(libs.ktor.server.test.host)

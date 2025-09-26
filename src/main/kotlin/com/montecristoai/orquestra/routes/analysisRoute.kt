@@ -13,36 +13,23 @@ fun Application.analysisRoute() {
         route("/api") {
             post("/analyze") {
                 val multipart = call.receiveMultipart()
-                var audioBytes: ByteArray? = null
-                var fileName: String? = null
+                var responseSent = false
 
                 multipart.forEachPart { part ->
-                    if (part is PartData.FileItem && part.name == "audio") {
-                        fileName = part.originalFileName
-                        audioBytes = part.streamProvider().readBytes()
+                    if (part is PartData.FileItem && part.name == "audio" && !responseSent) {
+                        responseSent = true
+                        part.streamProvider().use { audioStream ->
+                            val useCase = call.get<AnalyzeAudioUseCase>()
+                            val result = useCase.execute(audioStream)
+                            call.respond(result)
+                        }
                     }
                     part.dispose()
                 }
 
-                val bytes = audioBytes
-                if (bytes == null) {
-                    call.respond(mapOf("error" to "No se recibió archivo de audio"))
-                    return@post
+                if (!responseSent) {
+                    call.respond(mapOf("error" to "No se recibió archivo de audio o parte de audio inválida."))
                 }
-
-                val useCase = call.get<AnalyzeAudioUseCase>()
-                val result = useCase.execute(bytes)
-
-                // Añadimos el nombre del archivo al resultado si lo tenemos
-                val finalResult = result.descriptiveCard?.let {
-                    result.copy(
-                        descriptiveCard = it.copy(
-                           // Aquí podríamos añadir más metadatos si los tuviéramos
-                        )
-                    )
-                } ?: result
-
-                call.respond(finalResult)
             }
         }
     }

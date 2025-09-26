@@ -14,6 +14,7 @@ import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headers
+import java.io.InputStream
 import java.time.ZonedDateTime
 
 // --- Implementación específica para OpenAI Whisper ---
@@ -23,8 +24,9 @@ class OpenAITranscriptionRepository(
     private val apiKey_unused: String
 ) : ITranscriptionRepository {
 
-    override suspend fun transcribe(audioBytes: ByteArray): TranscriptionResponse {
+    override suspend fun transcribe(audioStream: InputStream): TranscriptionResponse {
         val apiKey = ""
+        val audioBytes = audioStream.readBytes()
 
         if (apiKey.isBlank()) {
             return TranscriptionResponse(error = "La API Key de Whisper no fue proporcionada por la configuración.")

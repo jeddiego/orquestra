@@ -9,7 +9,7 @@ ktor = "2.3.13"
 koinVersion = "4.0.3"
 cloudinaryVersion = "1.38.0"
 dotenvVersion = "6.4.1"
-googleAi = "0.5.0"
+googleAi = "1.18.0"
 
 [libraries]
 ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
@@ -28,7 +28,7 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 # Google
-google-ai-client = { module = "com.google.ai.client.generativeai:generativeai", version.ref = "googleAi"}
+google-ai-client = { module = "com.google.genai:google-genai", version.ref = "googleAi"}
 # Exposed
 exposed-core = { group = "org.jetbrains.exposed", name = "exposed-core", version.ref = "exposedVersion" }
 exposed-dao = { group = "org.jetbrains.exposed", name = "exposed-dao", version.ref = "exposedVersion" }

@@ -13,24 +13,23 @@ fun Application.transcriptionRoute() {
         route("/api") {
             post("/transcribe") {
                 val multipart = call.receiveMultipart()
-                var audioBytes: ByteArray? = null
+                var responseSent = false
 
                 multipart.forEachPart { part ->
-                    if (part is PartData.FileItem && part.name == "audio") {
-                        audioBytes = part.streamProvider().readBytes()
+                    if (part is PartData.FileItem && part.name == "audio" && !responseSent) {
+                        responseSent = true
+                        part.streamProvider().use { audioStream ->
+                            val useCase = call.get<TranscribeAudioUseCase>()
+                            val result = useCase.execute(audioStream)
+                            call.respond(result)
+                        }
                     }
                     part.dispose()
                 }
 
-                val bytes = audioBytes
-                if (bytes == null) {
-                    call.respond(mapOf("error" to "No se recibió archivo de audio"))
-                    return@post
+                if (!responseSent) {
+                    call.respond(mapOf("error" to "No se recibió archivo de audio o parte de audio inválida."))
                 }
-
-                val useCase = call.get<TranscribeAudioUseCase>()
-                val result = useCase.execute(bytes)
-                call.respond(result)
             }
         }
     }

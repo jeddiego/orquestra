@@ -5,16 +5,17 @@ import com.montecristoai.orquestra.domain.repository.ITranscriptionRepository
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.io.InputStream
 import java.util.Locale
 
 class AnalyzeAudioUseCase(private val repository: ITranscriptionRepository) {
 
-    suspend fun execute(audioBytes: ByteArray): AnalysisResponse {
+    suspend fun execute(audioStream: InputStream): AnalysisResponse {
         // 1. Capturamos la hora de inicio EXACTA en la zona horaria de la Ciudad de México.
         val recordingStartTime = ZonedDateTime.now(ZoneId.of("America/Mexico_City"))
 
         // 2. Realizamos la transcripción para obtener el texto con timestamps relativos.
-        val transcriptionResponse = repository.transcribe(audioBytes)
+        val transcriptionResponse = repository.transcribe(audioStream)
 
         val relativeTranscription = transcriptionResponse.transcription ?: return AnalysisResponse(
             error = transcriptionResponse.error ?: "La transcripción falló."
