@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const analyzeAudio = async (audioBlob, device) => {
         // --- CAMBIO ---
         // Apuntamos al nuevo endpoint de análisis
-        const YOUR_BACKEND_URL = "/api/analyze";
+        const YOUR_BACKEND_URL = "http://localhost:8084/api/analyze";
 
         const formData = new FormData();
         const fileName = `${device.participantName.replace(/\s+/g, '_') || device.deviceId}.wav`;
