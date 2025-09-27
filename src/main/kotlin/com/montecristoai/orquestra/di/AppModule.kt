@@ -36,6 +36,7 @@ fun appModule(geminiKey: String) = module {
     // Define cómo crear el TranscribeAudioUseCase.
     single { TranscribeAudioUseCase(get()) }
     single { AnalyzeAudioUseCase(get()) }
+    single { com.montecristoai.orquestra.domain.usecase.ListModelsUseCase(get()) }
 
     // Proporciona el repositorio, inyectando la clave de Gemini.
     single<ITranscriptionRepository> {

@@ -7,6 +7,7 @@ import java.time.ZonedDateTime
 
 // --- Interfaz para desacoplar la implementación ---
 interface ITranscriptionRepository {
-    suspend fun transcribe(audioStream: InputStream): TranscriptionResponse
-    suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime): AnalysisResponse
+    suspend fun listModels(): List<String>
+    suspend fun transcribe(audioStream: InputStream, modelName: String): TranscriptionResponse
+    suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime, modelName: String): AnalysisResponse
 }

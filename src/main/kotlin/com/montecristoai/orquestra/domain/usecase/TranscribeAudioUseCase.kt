@@ -6,7 +6,7 @@ import java.io.InputStream
 
 // El caso de uso orquesta la lógica, llamando al repositorio.
 class TranscribeAudioUseCase(private val repository: ITranscriptionRepository) {
-    suspend fun execute(audioStream: InputStream): TranscriptionResponse {
-        return repository.transcribe(audioStream)
+    suspend fun execute(audioStream: InputStream, modelName: String): TranscriptionResponse {
+        return repository.transcribe(audioStream, modelName)
     }
 }

@@ -3,6 +3,7 @@ package com.montecristoai.orquestra
 import com.montecristoai.orquestra.routes.webRouting
 import com.montecristoai.orquestra.di.appModule
 import com.montecristoai.orquestra.routes.analysisRoute
+import com.montecristoai.orquestra.routes.modelsRoute
 import com.montecristoai.orquestra.routes.transcriptionRoute
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.http.HttpHeaders
@@ -39,4 +40,5 @@ fun Application.module() {
     webRouting()
     transcriptionRoute()
     analysisRoute()
+    modelsRoute()
 }

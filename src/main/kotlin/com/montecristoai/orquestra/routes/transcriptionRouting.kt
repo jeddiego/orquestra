@@ -13,16 +13,33 @@ fun Application.transcriptionRoute() {
         route("/api") {
             post("/transcribe") {
                 val multipart = call.receiveMultipart()
+                var modelName: String? = null
                 var responseSent = false
 
+                // NOTE: This logic assumes the 'model' form item is sent BEFORE the 'audio' file item.
                 multipart.forEachPart { part ->
-                    if (part is PartData.FileItem && part.name == "audio" && !responseSent) {
-                        responseSent = true
-                        part.streamProvider().use { audioStream ->
-                            val useCase = call.get<TranscribeAudioUseCase>()
-                            val result = useCase.execute(audioStream)
-                            call.respond(result)
+                    when (part) {
+                        is PartData.FormItem -> {
+                            if (part.name == "model") {
+                                modelName = part.value
+                            }
                         }
+                        is PartData.FileItem -> {
+                            if (part.name == "audio" && !responseSent) {
+                                val currentModel = modelName
+                                if (currentModel == null) {
+                                    call.respond(mapOf("error" to "El campo 'model' es requerido y debe enviarse antes del archivo."))
+                                } else {
+                                    responseSent = true
+                                    part.streamProvider().use { audioStream ->
+                                        val useCase = call.get<TranscribeAudioUseCase>()
+                                        val result = useCase.execute(audioStream, currentModel)
+                                        call.respond(result)
+                                    }
+                                }
+                            }
+                        }
+                        else -> {}
                     }
                     part.dispose()
                 }

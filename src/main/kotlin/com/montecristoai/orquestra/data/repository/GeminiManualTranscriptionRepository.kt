@@ -1,15 +1,15 @@
 package com.montecristoai.orquestra.data.repository
 
+import com.google.genai.client.Client
+import com.google.genai.types.Content
+import com.google.genai.types.GenerateContentResponse
+import com.google.genai.types.Part
 import com.montecristoai.orquestra.data.dto.AnalysisResponse
 import com.montecristoai.orquestra.data.dto.TranscriptionResponse
 import com.montecristoai.orquestra.domain.repository.ITranscriptionRepository
 import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.time.ZonedDateTime
-import com.google.genai.Client
-import com.google.genai.types.Content
-import com.google.genai.types.GenerateContentResponse
-import com.google.genai.types.Part
 
 class GeminiManualTranscriptionRepository(
     private val apiKey: String
@@ -17,7 +17,27 @@ class GeminiManualTranscriptionRepository(
 
     private val jsonParser = Json { ignoreUnknownKeys = true }
 
-    override suspend fun transcribe(audioStream: InputStream): TranscriptionResponse {
+    override suspend fun listModels(): List<String> {
+        if (apiKey.isBlank()) {
+            return listOf()
+        }
+        try {
+            val client = Client.builder().apiKey(apiKey).build()
+            val models = mutableListOf<String>()
+            // The list() method returns a Pager, which is an iterable
+            for (model in client.models.list(null)) {
+                models.add(model.name)
+            }
+            // We are interested in the models that can be used for content generation
+            return models.filter { it.contains("generateContent") }
+        } catch (e: Exception) {
+            println("Error al listar los modelos de Gemini: ${e.message}")
+            e.printStackTrace()
+            return listOf()
+        }
+    }
+
+    override suspend fun transcribe(audioStream: InputStream, modelName: String): TranscriptionResponse {
         if (apiKey.isBlank()) {
             return TranscriptionResponse(error = "La API Key de Gemini no fue proporcionada.")
         }
@@ -39,7 +59,7 @@ class GeminiManualTranscriptionRepository(
                 Part.fromBytes(audioBytes, "audio/wav")
             )
 
-            val response: GenerateContentResponse = client.models.generateContent("gemini-1.5-flash", content, null)
+            val response: GenerateContentResponse = client.models.generateContent(modelName, content, null)
 
             val transcription = response.text()
                 ?: return TranscriptionResponse(error = "La respuesta de la API no contenía una transcripción válida.")
@@ -49,11 +69,11 @@ class GeminiManualTranscriptionRepository(
         } catch (e: Exception) {
             println("Error al contactar la API de Gemini con el SDK: ${e.message}")
             e.printStackTrace()
-            return TranscriptionResponse(error = "No se pudo conectar con el servicio de transcripción de Gemini.")
+            return TranscriptionResponse(error = "Error en el backend: ${e::class.simpleName} - ${e.message}")
         }
     }
 
-    override suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime): AnalysisResponse {
+    override suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime, modelName: String): AnalysisResponse {
         if (apiKey.isBlank()) {
             return AnalysisResponse(error = "La API Key de Gemini no fue proporcionada.")
         }
@@ -81,7 +101,7 @@ class GeminiManualTranscriptionRepository(
             Asegúrate de que tu respuesta sea solo el JSON, sin texto adicional antes o después.
             """.trimIndent()
 
-            val response: GenerateContentResponse = client.models.generateContent("gemini-1.5-flash", analysisPrompt, null)
+            val response: GenerateContentResponse = client.models.generateContent(modelName, analysisPrompt, null)
 
             val jsonResponseText = response.text()
                 ?: return AnalysisResponse(error = "La respuesta de la API de análisis estaba vacía.")
@@ -94,7 +114,7 @@ class GeminiManualTranscriptionRepository(
             val errorMessage = "Error al contactar la API de Gemini para analizar: ${e::class.simpleName} - ${e.message}"
             println(errorMessage)
             e.printStackTrace()
-            return AnalysisResponse(error = "El servicio de análisis de Gemini falló.")
+            return AnalysisResponse(error = "Error en el backend: ${e::class.simpleName} - ${e.message}")
         }
     }
 }
