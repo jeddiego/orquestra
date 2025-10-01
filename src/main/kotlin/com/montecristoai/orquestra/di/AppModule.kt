@@ -2,8 +2,7 @@ package com.montecristoai.orquestra.di
 
 import com.montecristoai.orquestra.data.repository.GeminiManualTranscriptionRepository
 import com.montecristoai.orquestra.domain.repository.ITranscriptionRepository
-import com.montecristoai.orquestra.domain.usecase.AnalyzeAudioUseCase
-import com.montecristoai.orquestra.domain.usecase.TranscribeAudioUseCase
+import com.montecristoai.orquestra.domain.usecase.ChatUseCase
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.HttpTimeout
@@ -33,10 +32,8 @@ fun appModule(geminiKey: String) = module {
         }
     }
 
-    // Define cómo crear el TranscribeAudioUseCase.
-    single { TranscribeAudioUseCase(get()) }
-    single { AnalyzeAudioUseCase(get()) }
-    single { com.montecristoai.orquestra.domain.usecase.ListModelsUseCase(get()) }
+    // Define cómo crear el ChatUseCase.
+    single { ChatUseCase(get()) }
 
     // Proporciona el repositorio, inyectando la clave de Gemini.
     single<ITranscriptionRepository> {

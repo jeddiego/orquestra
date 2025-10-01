@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { messages, addMessage, showTypingIndicator } from '../stores/chatStore.js';
   import { missionStatus, missionPhase, missionProgress, isMissionActive } from '../stores/missionStore.js';
-  import { canvasContent } from '../stores/canvasStore.js';
 
   let chatContainer;
   let userInput = '';
@@ -17,8 +16,6 @@
     });
   });
 
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
   async function runConversation() {
     if (userInput.trim() === "") return;
 
@@ -28,39 +25,51 @@
 
     addMessage('user', `<p>${currentInput}</p>`);
 
-    await sleep(500);
     missionStatus.set("📊 En Ejecución");
     isMissionActive.set(true);
-    missionPhase.set("Fase 1: Procesando Solicitud");
-    missionProgress.set(25);
-
-    await sleep(1500);
+    missionPhase.set("Fase 1: Contactando a Gemini");
+    missionProgress.set(50);
     showTypingIndicator.set(true);
-    await sleep(2500);
-    showTypingIndicator.set(false);
-    const agentResponse1 = `<i class="ph-bold ph-brain agent-icon"></i><div><p class="agent-name">Orquestra</p><p>Recibido. Iniciando análisis para identificar los perfiles de buyer persona más relevantes para tu campaña. Estoy cruzando datos demográficos y de comportamiento.</p></div>`;
-    addMessage('agent', agentResponse1);
 
-    await sleep(1000);
-    missionPhase.set("Fase 1: Segmentando Audiencias");
-    missionProgress.set(66);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: currentInput }),
+      });
 
-    await sleep(3000);
-    showTypingIndicator.set(true);
-    await sleep(4000);
-    showTypingIndicator.set(false);
-    const agentResponse2 = `<i class="ph-bold ph-brain agent-icon"></i><div><p class="agent-name">Orquestra</p><p>Análisis completado. He identificado dos perfiles clave con alto potencial de conversión. Puedes ver los detalles en el canvas para afinar tu estrategia de campaña.</p></div>`;
-    addMessage('agent', agentResponse2);
+      showTypingIndicator.set(false);
 
-    await sleep(500);
-    canvasContent.set('personas');
-    missionPhase.set("Fase 2: Perfiles Generados");
-    missionProgress.set(100);
+      const data = await response.json();
 
-    await sleep(1500);
-    addMessage('user', `<p>Perfecto, esto es justo lo que necesitaba. Muy útil.</p>`);
+      if (!response.ok || data.error) {
+        const errorMessage = data.error || 'An unknown error occurred.';
+        addMessage('agent', `<i class="ph-bold ph-brain agent-icon"></i><div><p class="agent-name">Orquestra</p><p class="error">Error: ${errorMessage}</p></div>`);
+        missionStatus.set("❌ Error");
+        missionProgress.set(100);
+        return;
+      }
 
-    inputDisabled = false;
+      const agentResponse = data.response || "No se recibió una respuesta válida.";
+
+      const agentMessage = `<i class="ph-bold ph-brain agent-icon"></i><div><p class="agent-name">Orquestra</p><p>${agentResponse}</p></div>`;
+      addMessage('agent', agentMessage);
+
+      missionPhase.set("Fase 2: Respuesta Recibida");
+      missionProgress.set(100);
+      missionStatus.set("✅ Completada");
+
+    } catch (error) {
+      showTypingIndicator.set(false);
+      addMessage('agent', `<i class="ph-bold ph-brain agent-icon"></i><div><p class="agent-name">Orquestra</p><p class="error">Error de red al contactar al servidor.</p></div>`);
+      missionStatus.set("❌ Error");
+      missionProgress.set(100);
+    } finally {
+      inputDisabled = false;
+      isMissionActive.set(false);
+    }
   }
 
   function handleKeydown(e) {
@@ -180,5 +189,9 @@
         50% {
             opacity: 1;
         }
+    }
+
+    .error {
+        color: var(--accent-red);
     }
 </style>

@@ -1,106 +1,72 @@
 package com.montecristoai.orquestra.data.repository
 
-import com.google.genai.Client
-import com.google.genai.type.Content
-import com.google.genai.type.GenerateContentResponse
-import com.google.genai.type.Part
-import com.google.genai.type.text
-import com.montecristoai.orquestra.data.dto.AnalysisResponse
-import com.montecristoai.orquestra.data.dto.TranscriptionResponse
+import com.montecristoai.orquestra.data.dto.ChatResponse
+import com.montecristoai.orquestra.data.dto.gemini.ContentInput
+import com.montecristoai.orquestra.data.dto.gemini.GenerateContentRequest
+import com.montecristoai.orquestra.data.dto.gemini.GenerationConfig
+import com.montecristoai.orquestra.data.dto.gemini.Part
+import com.montecristoai.orquestra.data.dto.gemini.SystemInstruction
 import com.montecristoai.orquestra.domain.repository.ITranscriptionRepository
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.isSuccess
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import java.io.InputStream
-import java.time.ZonedDateTime
 
 class GeminiManualTranscriptionRepository(
     private val apiKey: String
 ) : ITranscriptionRepository {
 
-    private val jsonParser = Json { ignoreUnknownKeys = true }
-
-    override suspend fun listModels(): List<String> {
-        // This is a simplified implementation. A real implementation would list models from the API.
-        return listOf("gemini-1.5-pro-latest", "gemini-pro")
-    }
-
-    override suspend fun transcribe(audioStream: InputStream, modelName: String): TranscriptionResponse {
-        if (apiKey.isBlank()) {
-            return TranscriptionResponse(error = "La API Key de Gemini no fue proporcionada.")
-        }
-
-        try {
-            val client = Client.builder().apiKey(apiKey).build()
-            val audioBytes = audioStream.readBytes()
-
-            val transcriptionPrompt = """
-            Transcribe este audio. Sigue estas reglas estrictamente:
-            1. Identifica y etiqueta a cada hablante como 'Hablante 1', 'Hablante 2', etc.
-            2. Al inicio de CADA frase o evento sonoro, añade una marca de tiempo RELATIVA desde el inicio del audio con el formato [HH:MM:SS].
-            3. Coloca CADA nueva marca de tiempo y su frase correspondiente en una nueva línea.
-            4. IMPORTANTE: La primera línea de la transcripción NO debe tener ninguna sangría o espacio en blanco al inicio.
-            """.trimIndent()
-
-            val content = Content.fromParts(
-                Part.fromText(transcriptionPrompt),
-                Part.fromBytes(audioBytes, "audio/wav")
-            )
-
-            val response: GenerateContentResponse = client.models().generateContent(modelName, content, null)
-
-            val transcription = response.text()
-                ?: return TranscriptionResponse(error = "La respuesta de la API no contenía una transcripción válida.")
-
-            return TranscriptionResponse(transcription = transcription)
-
-        } catch (e: Exception) {
-            println("Error al contactar la API de Gemini con el SDK: ${e.message}")
-            e.printStackTrace()
-            return TranscriptionResponse(error = "Error en el backend: ${e::class.simpleName} - ${e.message}")
+    private val httpClient = HttpClient(CIO) {
+        install(ContentNegotiation) {
+            json(Json {
+                ignoreUnknownKeys = true
+                prettyPrint = true
+            })
         }
     }
 
-    override suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime, modelName: String): AnalysisResponse {
+    override suspend fun generateChatResponse(message: String, modelName: String): ChatResponse {
         if (apiKey.isBlank()) {
-            return AnalysisResponse(error = "La API Key de Gemini no fue proporcionada.")
+            return ChatResponse(response = "", error = "API Key for Gemini not provided.")
         }
 
-        try {
-            val client = Client.builder().apiKey(apiKey).build()
+        val baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent"
+        val req = GenerateContentRequest(
+            system_instruction = SystemInstruction(parts = listOf(Part("You are a helpful assistant."))),
+            contents = listOf(ContentInput(role = "user", parts = listOf(Part(message)))),
+            generation_config = GenerationConfig(temperature = 0.7f, maxOutputTokens = 800)
+        )
 
-            val analysisPrompt = """
-            Eres un analista de audio experto. A partir de la siguiente transcripción, genera una "Ficha Descriptiva".
-            La transcripción es:
-            ---
-            $transcription
-            ---
-            Tu tarea es devolver EXCLUSIVAMENTE un objeto JSON válido con la siguiente estructura:
-            {
-              "descriptiveCard": {
-                "summary": "Un resumen conciso del contenido del audio.",
-                "keyPoints": ["Una lista de 2 a 5 puntos clave.", "Cada punto como un string."],
-                "detectedSpeakers": "El número total de hablantes distintos que aparecen en la transcripción.",
-                "recordingType": "El tipo de grabación (ej: 'Entrevista', 'Monólogo', 'Prueba de audio')."
-              },
-              "transcription": "Copia la transcripción original aquí, preservando el formato y los saltos de línea sin ninguna alteración."
+        try {
+            val response = httpClient.post(baseUrl) {
+                header(HttpHeaders.ContentType, ContentType.Application.Json)
+                header("x-goog-api-key", apiKey)
+                setBody(req)
             }
-            No incluyas el campo 'detectedDate' en tu respuesta.
-            Asegúrate de que tu respuesta sea solo el JSON, sin texto adicional antes o después.
-            """.trimIndent()
 
-            val response: GenerateContentResponse = client.models().generateContent(modelName, analysisPrompt, null)
+            if (!response.status.isSuccess()) {
+                val body = response.bodyAsText()
+                println("Gemini API error ${response.status}: $body")
+                return ChatResponse(response = "", error = "Gemini API error ${response.status}: $body")
+            }
 
-            val jsonResponseText = response.text()
-                ?: return AnalysisResponse(error = "La respuesta de la API de análisis estaba vacía.")
+            val genResp = response.body<com.montecristoai.orquestra.data.dto.gemini.GenerateContentResponse>()
+            val textResponse = genResp.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text ?: ""
 
-            val cleanedJson = jsonResponseText.substringAfter("```json").substringBeforeLast("```").trim()
-
-            return jsonParser.decodeFromString<AnalysisResponse>(cleanedJson)
+            return ChatResponse(response = textResponse)
 
         } catch (e: Exception) {
-            val errorMessage = "Error al contactar la API de Gemini para analizar: ${e::class.simpleName} - ${e.message}"
-            println(errorMessage)
             e.printStackTrace()
-            return AnalysisResponse(error = "Error en el backend: ${e::class.simpleName} - ${e.message}")
+            return ChatResponse(response = "", error = "Failed to connect to Gemini API: ${e.message}")
         }
     }
 }
