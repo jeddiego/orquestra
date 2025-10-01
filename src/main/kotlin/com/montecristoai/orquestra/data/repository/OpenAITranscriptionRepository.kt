@@ -21,11 +21,14 @@ import java.time.ZonedDateTime
 // Ahora recibe el HttpClient y la apiKey a través de inyección de dependencias.
 class OpenAITranscriptionRepository(
     private val client: HttpClient,
-    private val apiKey_unused: String
+    private val apiKey: String
 ) : ITranscriptionRepository {
 
-    override suspend fun transcribe(audioStream: InputStream): TranscriptionResponse {
-        val apiKey = ""
+    override suspend fun listModels(): List<String> {
+        return listOf("whisper-1")
+    }
+
+    override suspend fun transcribe(audioStream: InputStream, modelName: String): TranscriptionResponse {
         val audioBytes = audioStream.readBytes()
 
         if (apiKey.isBlank()) {
@@ -45,7 +48,7 @@ class OpenAITranscriptionRepository(
                             append(HttpHeaders.ContentType, "audio/wav")
                             append(HttpHeaders.ContentDisposition, "filename=\"audio.wav\"")
                         })
-                        append("model", "whisper-1")
+                        append("model", modelName)
                     }
                 ))
             }
@@ -65,7 +68,7 @@ class OpenAITranscriptionRepository(
         }
     }
 
-    override suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime): AnalysisResponse {
+    override suspend fun analyze(transcription: String, recordingStartTime: ZonedDateTime, modelName: String): AnalysisResponse {
         return AnalysisResponse()
     }
 }

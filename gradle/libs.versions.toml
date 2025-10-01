@@ -9,7 +9,7 @@ ktor = "2.3.13"
 koinVersion = "4.0.3"
 cloudinaryVersion = "1.38.0"
 dotenvVersion = "6.4.1"
-googleAi = "1.18.0"
+googleAi = "1.19.0"
 
 [libraries]
 ktor-server-auth = { module = "io.ktor:ktor-server-auth", version.ref = "ktor" }
