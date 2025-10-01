@@ -7,6 +7,7 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.get
+import java.io.InputStream
 
 fun Application.transcriptionRoute() {
     routing {
@@ -14,9 +15,9 @@ fun Application.transcriptionRoute() {
             post("/transcribe") {
                 val multipart = call.receiveMultipart()
                 var modelName: String? = null
-                var responseSent = false
+                var audioStreamProvider: (() -> InputStream)? = null
 
-                // NOTE: This logic assumes the 'model' form item is sent BEFORE the 'audio' file item.
+                // First, iterate over all parts to find the model name and the audio stream provider.
                 multipart.forEachPart { part ->
                     when (part) {
                         is PartData.FormItem -> {
@@ -25,27 +26,31 @@ fun Application.transcriptionRoute() {
                             }
                         }
                         is PartData.FileItem -> {
-                            if (part.name == "audio" && !responseSent) {
-                                val currentModel = modelName
-                                if (currentModel == null) {
-                                    call.respond(mapOf("error" to "El campo 'model' es requerido y debe enviarse antes del archivo."))
-                                } else {
-                                    responseSent = true
-                                    part.streamProvider().use { audioStream ->
-                                        val useCase = call.get<TranscribeAudioUseCase>()
-                                        val result = useCase.execute(audioStream, currentModel)
-                                        call.respond(result)
-                                    }
-                                }
+                            if (part.name == "audio") {
+                                audioStreamProvider = part.streamProvider
                             }
                         }
                         else -> {}
                     }
-                    part.dispose()
+                    // Do not dispose of the part here, as we need the stream later.
+                    // Ktor will handle the disposal automatically after the call is complete.
                 }
 
-                if (!responseSent) {
-                    call.respond(mapOf("error" to "No se recibió archivo de audio o parte de audio inválida."))
+                // Now that we have processed all parts, check if we have what we need.
+                val finalModelName = modelName
+                val finalAudioStreamProvider = audioStreamProvider
+
+                if (finalModelName != null && finalAudioStreamProvider != null) {
+                    finalAudioStreamProvider().use { audioStream ->
+                        val useCase = call.get<TranscribeAudioUseCase>()
+                        val result = useCase.execute(audioStream, finalModelName)
+                        call.respond(result)
+                    }
+                } else {
+                    val missingFields = mutableListOf<String>()
+                    if (finalModelName == null) missingFields.add("model")
+                    if (finalAudioStreamProvider == null) missingFields.add("audio")
+                    call.respond(mapOf("error" to "Faltan campos en la petición: ${missingFields.joinToString(", ")}"))
                 }
             }
         }

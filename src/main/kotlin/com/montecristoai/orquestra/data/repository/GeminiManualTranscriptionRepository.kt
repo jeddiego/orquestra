@@ -1,6 +1,6 @@
 package com.montecristoai.orquestra.data.repository
 
-import com.google.genai.client.Client
+import com.google.genai.Client
 import com.google.genai.types.Content
 import com.google.genai.types.GenerateContentResponse
 import com.google.genai.types.Part
@@ -22,14 +22,21 @@ class GeminiManualTranscriptionRepository(
             return listOf()
         }
         try {
+
             val client = Client.builder().apiKey(apiKey).build()
             val models = mutableListOf<String>()
             // The list() method returns a Pager, which is an iterable
             for (model in client.models.list(null)) {
-                models.add(model.name)
+                // Check if the model supports the "generateContent" action
+                val supportsGenerateContent = model.supportedActions()
+                    .map { actions -> "generateContent" in actions }
+                    .orElse(false)
+
+                if (supportsGenerateContent) {
+                    model.name().ifPresent { name -> models.add(name) }
+                }
             }
-            // We are interested in the models that can be used for content generation
-            return models.filter { it.contains("generateContent") }
+            return models
         } catch (e: Exception) {
             println("Error al listar los modelos de Gemini: ${e.message}")
             e.printStackTrace()
@@ -105,6 +112,10 @@ class GeminiManualTranscriptionRepository(
 
             val jsonResponseText = response.text()
                 ?: return AnalysisResponse(error = "La respuesta de la API de análisis estaba vacía.")
+
+            println("--- RAW GEMINI RESPONSE ---")
+            println(jsonResponseText)
+            println("--- END RAW GEMINI RESPONSE ---")
 
             val cleanedJson = jsonResponseText.substringAfter("```json").substringBeforeLast("```").trim()
 
