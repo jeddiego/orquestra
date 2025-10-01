@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Management ---
     const COLOR_PALETTE = ['#3b82f6', '#14b8a6', '#f97316', '#8b5cf6', '#ef4444', '#f59e0b'];
     let state = {
-        devices: [], // { ..., audioBlob, analysisData, status: 'ready'|'recording'|'analyzing'|'finished' }
+        devices: [],
         currentPhase: 1,
         isRecording: false,
     };
@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const assignmentListContainer = document.getElementById('assignment-list-container');
     const deviceStatusList = document.getElementById('device-status-list');
     const monitorSubtitle = document.getElementById('monitor-subtitle');
+    const modelSelector = document.getElementById('model-selector');
 
     // --- Prevent Accidental Navigation ---
     window.addEventListener('beforeunload', (event) => {
@@ -27,34 +28,72 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // --- NEW: Load AI Models ---
+    const loadModels = async () => {
+        try {
+            console.log("[loadModels] Solicitando lista de modelos desde /api/models...");
+            const response = await fetch('/api/models');
+            if (!response.ok) {
+                throw new Error(`Error del servidor al cargar modelos: ${response.statusText}`);
+            }
+            const models = await response.json();
+            console.log("[loadModels] Modelos recibidos:", models);
+
+            modelSelector.innerHTML = ''; // Clear "loading" option
+            if (models.length === 0) {
+                 modelSelector.innerHTML = '<option value="">No se encontraron modelos</option>';
+                 return;
+            }
+
+            models.forEach(modelName => {
+                const option = document.createElement('option');
+                const friendlyName = modelName.split('/').pop();
+                option.value = modelName;
+                option.textContent = friendlyName;
+                modelSelector.appendChild(option);
+            });
+        } catch (error) {
+            console.error("[loadModels] Falló la carga de modelos:", error);
+            modelSelector.innerHTML = '<option value="">Error al cargar modelos</option>';
+        }
+    };
+
     // --- Real Analysis Service (Calling your Ktor Backend) ---
-    const analyzeAudio = async (audioBlob, device) => {
-        // --- CAMBIO ---
-        // Apuntamos al nuevo endpoint de análisis
+    const analyzeAudio = async (audioBlob, device, modelName) => {
         const YOUR_BACKEND_URL = "/api/analyze";
+
+        console.log(`[analyzeAudio] Iniciando análisis para el dispositivo: ${device.deviceId}`);
+        console.log(`[analyzeAudio] URL del backend: ${YOUR_BACKEND_URL}`);
+        console.log(`[analyzeAudio] Modelo seleccionado: ${modelName}`);
 
         const formData = new FormData();
         const fileName = `${device.participantName.replace(/\s+/g, '_') || device.deviceId}.wav`;
+
+        formData.append("model", modelName);
         formData.append("audio", audioBlob, fileName);
 
         try {
+            console.log("[analyzeAudio] Enviando petición fetch...");
             const response = await fetch(YOUR_BACKEND_URL, {
                 method: 'POST',
                 body: formData
             });
+            console.log(`[analyzeAudio] Respuesta recibida del backend con estado: ${response.status}`);
 
             if (!response.ok) {
                  const result = await response.json();
-                 console.error("Error from your backend:", result.error);
+                 console.error("[analyzeAudio] Error en la respuesta del backend (response.ok = false):", result);
                  throw new Error(result.error || `Error del servidor: ${response.statusText}`);
             }
 
-            // Devolvemos el objeto completo de análisis
-            return await response.json();
+            console.log("[analyzeAudio] La respuesta del backend fue exitosa. Procesando JSON...");
+            const responseData = await response.json();
+            console.log("[analyzeAudio] Datos del análisis recibidos:", responseData);
+            return responseData;
 
         } catch (error) {
-            console.error("Falló la llamada a tu backend:", error);
-            return { error: "Error al conectar con el backend." };
+            console.error("[analyzeAudio] Falló la llamada a tu backend. Error completo:", error);
+            return { error: `Error de conexión o del script. Revisa la consola (F12) para más detalles. Error: ${error.message}` };
         }
     };
 
@@ -94,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         statusHTML = `<div class="device-status status-transcribing"><i class="ph-bold ph-spinner-gap animate-spin"></i><span>Analizando...</span></div>`;
                         break;
                     case 'finished':
-                         // --- CAMBIO ---
                         statusHTML = `<button class="analyze-button" data-device-id="${device.deviceId}"><i class="ph-bold ph-chart-bar"></i> Ver Análisis</button>`;
                         break;
                     case 'ready_to_analyze':
@@ -113,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 deviceStatusList.appendChild(li);
             });
 
-             // --- CAMBIO ---
             deviceStatusList.querySelectorAll('.analyze-button').forEach(button => {
                 button.addEventListener('click', handleAnalyzeClick);
             });
@@ -127,7 +164,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!device) return;
 
-        // Si ya tenemos los datos, solo mostramos el modal
         if (device.analysisData) {
             window.showAnalysis(device.analysisData, `${device.participantName.replace(/\s+/g, '_') || device.deviceId}.wav`);
             return;
@@ -135,10 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!device.audioBlob) return;
 
+        const selectedModel = modelSelector.value;
+        if (!selectedModel || selectedModel === "") {
+            alert("Por favor, selecciona un modelo de IA antes de analizar.");
+            return;
+        }
+
         device.status = 'analyzing';
         render();
 
-        const analysisResult = await analyzeAudio(device.audioBlob, device);
+        const analysisResult = await analyzeAudio(device.audioBlob, device, selectedModel);
 
         if (analysisResult.error) {
              alert(`Error en el análisis: ${analysisResult.error}`);
@@ -223,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 deviceId: d.deviceId,
                 label: d.label || `Micrófono ${d.deviceId.substring(0, 8)}`,
                 selected: true,
-                participantName: `Hablante ${index + 1}`, // Asignación por defecto
+                participantName: `Hablante ${index + 1}`,
                 color: COLOR_PALETTE[index % COLOR_PALETTE.length],
                 status: 'ready'
             }));
@@ -233,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ... (El resto del archivo, handleStartStop, handleFinish, WAV Encoder, etc. se mantienen igual)
     const encodeWAV = (samples, sampleRate) => {
         const buffer = new ArrayBuffer(44 + samples.length * 2);
         const view = new DataView(buffer);
@@ -248,9 +289,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleStartStop = async () => {
-        const useWavFallback = !MediaRecorder.isTypeSupported('audio/ogg; codecs=opus');
+        const useWavFallback = !('MediaRecorder' in window) || !MediaRecorder.isTypeSupported('audio/ogg; codecs=opus');
 
-        if (state.isRecording) { // --- STOP RECORDING ---
+        if (state.isRecording) {
             state.isRecording = false;
             startStopButton.disabled = true;
             startStopButton.innerHTML = '<span>Finalizando...</span>';
@@ -260,11 +301,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 device.status = 'processing';
                 if (useWavFallback) {
-                    if (device.processorNode) {
-                        device.processorNode.disconnect();
+                    if (device.workletNode) {
+                        device.workletNode.port.onmessage = null;
+                        device.workletNode.disconnect();
                         device.analyser.disconnect();
-                        device.audioContext.close();
-                        device.audioBlob = encodeWAV(device.pcmData, device.audioContext.sampleRate);
+                        await device.audioContext.close();
+
+                        const totalLength = device.pcmData.reduce((acc, chunk) => acc + chunk.length, 0);
+                        const concatenatedData = new Float32Array(totalLength);
+                        let offset = 0;
+                        for (const chunk of device.pcmData) {
+                            concatenatedData.set(chunk, offset);
+                            offset += chunk.length;
+                        }
+
+                        device.audioBlob = encodeWAV(concatenatedData, device.sampleRate);
                         device.fileExtension = 'wav';
                         device.status = 'ready_to_analyze';
                     }
@@ -285,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             finishButton.classList.remove('hidden');
             render();
 
-        } else { // --- START RECORDING ---
+        } else {
             let anyDeviceSelected = false;
             for(const device of state.devices) {
                 if(device.selected && device.participantName.trim() !== '') {
@@ -310,17 +361,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         device.status = 'recording';
 
                         device.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        device.sampleRate = device.audioContext.sampleRate;
                         const source = device.audioContext.createMediaStreamSource(stream);
                         device.analyser = device.audioContext.createAnalyser();
                         device.analyser.fftSize = 256;
                         source.connect(device.analyser);
 
                         if (useWavFallback) {
-                            device.processorNode = device.audioContext.createScriptProcessor(4096, 1, 1);
+                            await device.audioContext.audioWorklet.addModule('/static/wav-recorder-processor.js');
+                            device.workletNode = new AudioWorkletNode(device.audioContext, 'wav-recorder-processor');
                             device.pcmData = [];
-                            device.processorNode.onaudioprocess = (e) => { const inputData = e.inputBuffer.getChannelData(0); device.pcmData.push(...new Float32Array(inputData)); };
-                            device.analyser.connect(device.processorNode);
-                            device.processorNode.connect(device.audioContext.destination);
+                            device.workletNode.port.onmessage = (event) => {
+                                device.pcmData.push(event.data);
+                            };
+                            device.analyser.connect(device.workletNode);
+                            device.workletNode.connect(device.audioContext.destination);
                         } else {
                             device.analyser.connect(device.audioContext.destination);
                             device.recorder = new MediaRecorder(stream, { mimeType: 'audio/ogg; codecs=opus' });
@@ -363,4 +418,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial Render
     render();
+    loadModels();
 });

@@ -1,7 +1,6 @@
 package com.montecristoai.orquestra.di
 
 import com.montecristoai.orquestra.data.repository.GeminiManualTranscriptionRepository
-import com.montecristoai.orquestra.data.repository.OpenAITranscriptionRepository
 import com.montecristoai.orquestra.domain.repository.ITranscriptionRepository
 import com.montecristoai.orquestra.domain.usecase.AnalyzeAudioUseCase
 import com.montecristoai.orquestra.domain.usecase.TranscribeAudioUseCase
@@ -13,7 +12,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 
-fun appModule(whisperKey: String) = module {
+fun appModule(geminiKey: String) = module {
 
     // Proporciona una única instancia del HttpClient para toda la app.
     single {
@@ -37,10 +36,10 @@ fun appModule(whisperKey: String) = module {
     // Define cómo crear el TranscribeAudioUseCase.
     single { TranscribeAudioUseCase(get()) }
     single { AnalyzeAudioUseCase(get()) }
+    single { com.montecristoai.orquestra.domain.usecase.ListModelsUseCase(get()) }
 
-    // Proporciona el repositorio, inyectando el HttpClient y la clave de Whisper.
+    // Proporciona el repositorio, inyectando la clave de Gemini.
     single<ITranscriptionRepository> {
-        OpenAITranscriptionRepository(get(), whisperKey)
-        GeminiManualTranscriptionRepository(get(), whisperKey)
+        GeminiManualTranscriptionRepository(geminiKey)
     }
 }

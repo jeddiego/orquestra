@@ -7,42 +7,51 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.koin.ktor.ext.get
+import java.io.InputStream
 
 fun Application.analysisRoute() {
     routing {
         route("/api") {
             post("/analyze") {
                 val multipart = call.receiveMultipart()
-                var audioBytes: ByteArray? = null
-                var fileName: String? = null
+                var modelName: String? = null
+                var audioStreamProvider: (() -> InputStream)? = null
 
+                // First, iterate over all parts to find the model name and the audio stream provider.
                 multipart.forEachPart { part ->
-                    if (part is PartData.FileItem && part.name == "audio") {
-                        fileName = part.originalFileName
-                        audioBytes = part.streamProvider().readBytes()
+                    when (part) {
+                        is PartData.FormItem -> {
+                            if (part.name == "model") {
+                                modelName = part.value
+                            }
+                        }
+                        is PartData.FileItem -> {
+                            if (part.name == "audio") {
+                                audioStreamProvider = part.streamProvider
+                            }
+                        }
+                        else -> {}
                     }
-                    part.dispose()
+                    // Do not dispose of the part here, as we need the stream later.
+                    // Ktor will handle the disposal automatically after the call is complete.
                 }
 
-                val bytes = audioBytes
-                if (bytes == null) {
-                    call.respond(mapOf("error" to "No se recibió archivo de audio"))
-                    return@post
+                // Now that we have processed all parts, check if we have what we need.
+                val finalModelName = modelName
+                val finalAudioStreamProvider = audioStreamProvider
+
+                if (finalModelName != null && finalAudioStreamProvider != null) {
+                    finalAudioStreamProvider().use { audioStream ->
+                        val useCase = call.get<AnalyzeAudioUseCase>()
+                        val result = useCase.execute(audioStream, finalModelName)
+                        call.respond(result)
+                    }
+                } else {
+                    val missingFields = mutableListOf<String>()
+                    if (finalModelName == null) missingFields.add("model")
+                    if (finalAudioStreamProvider == null) missingFields.add("audio")
+                    call.respond(mapOf("error" to "Faltan campos en la petición: ${missingFields.joinToString(", ")}"))
                 }
-
-                val useCase = call.get<AnalyzeAudioUseCase>()
-                val result = useCase.execute(bytes)
-
-                // Añadimos el nombre del archivo al resultado si lo tenemos
-                val finalResult = result.descriptiveCard?.let {
-                    result.copy(
-                        descriptiveCard = it.copy(
-                           // Aquí podríamos añadir más metadatos si los tuviéramos
-                        )
-                    )
-                } ?: result
-
-                call.respond(finalResult)
             }
         }
     }

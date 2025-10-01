@@ -44,7 +44,17 @@ suspend fun indexContent(call: ApplicationCall) {
                     div(classes = "phase-content-wrapper") {
                         div(classes = "phase-content") {
                             id = "phase-3-content"
-                            p { +"Inicia la grabación. Podrás analizar cada audio al finalizar." }
+                            p { +"Selecciona el modelo de IA y luego inicia la grabación." }
+                            div(classes = "model-selector-container") {
+                                label {
+                                    htmlFor = "model-selector"
+                                    +"Modelo de IA:"
+                                }
+                                select(classes = "model-selector") {
+                                    id = "model-selector"
+                                    option { +"Cargando modelos..." }
+                                }
+                            }
                             button(classes = "control-button record") {
                                 id = "start-stop-button"
                                 i(classes = "ph-bold ph-play")

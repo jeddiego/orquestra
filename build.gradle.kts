@@ -35,10 +35,11 @@ dependencies {
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.server.cors)
     implementation(libs.ktor.serialization.kotlinx.json)
 
     // Google
-//    implementation(libs.google.ai.client)
+    implementation(libs.google.ai.client)
 
     // Testing
     testImplementation(libs.ktor.server.test.host)
